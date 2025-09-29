@@ -3,7 +3,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-import numpy as np
+from policyengine_us import Simulation
 
 # Page configuration
 st.set_page_config(
@@ -19,119 +19,8 @@ COLORS = {
     'gradient': ['#D1E5F0', '#92C5DE', '#2166AC', '#053061'],
 }
 
-# Federal Poverty Guidelines 2024
-FPG_2024 = {
-    1: 15060, 2: 20440, 3: 25820, 4: 31200,
-    5: 36580, 6: 41960, 7: 47340, 8: 52720
-}
-
-def get_fpg(household_size):
-    if household_size <= 8:
-        return FPG_2024.get(household_size, FPG_2024[8])
-    return FPG_2024[8] + (household_size - 8) * 5380
-
-def calculate_snap(income, household_size):
-    monthly_income = income / 12
-    fpg = get_fpg(household_size)
-    gross_limit = fpg * 1.3
-
-    if income > gross_limit:
-        return 0
-
-    # Simplified SNAP calculation
-    max_benefit = {1: 291, 2: 535, 3: 766, 4: 973, 5: 1155, 6: 1386}
-    max_monthly = max_benefit.get(household_size, 1386 + (household_size - 6) * 200)
-    benefit = max(0, max_monthly - (monthly_income * 0.3))
-    return benefit * 12
-
-def calculate_medicaid_value(income, household_size, num_children):
-    fpg = get_fpg(household_size)
-
-    # Children usually eligible up to 200% FPG
-    if num_children > 0 and income < fpg * 2:
-        return num_children * 3000  # Estimated annual value per child
-
-    # Adults in expansion states eligible up to 138% FPG
-    if income < fpg * 1.38:
-        return 6000  # Estimated annual value
-
-    return 0
-
-def calculate_eitc(income, num_children, married):
-    # Simplified EITC calculation
-    if num_children == 0:
-        max_credit = 600
-        phase_in_rate = 0.0765
-        plateau_start = 7830
-        phase_out_start = 17640 if married else 9800
-        phase_out_rate = 0.0765
-    elif num_children == 1:
-        max_credit = 3995
-        phase_in_rate = 0.34
-        plateau_start = 11750
-        phase_out_start = 29550 if married else 22300
-        phase_out_rate = 0.1598
-    elif num_children == 2:
-        max_credit = 6604
-        phase_in_rate = 0.4
-        plateau_start = 16510
-        phase_out_start = 29550 if married else 22300
-        phase_out_rate = 0.2106
-    else:  # 3 or more
-        max_credit = 7430
-        phase_in_rate = 0.45
-        plateau_start = 16510
-        phase_out_start = 29550 if married else 22300
-        phase_out_rate = 0.2106
-
-    if income <= plateau_start:
-        return min(income * phase_in_rate, max_credit)
-    elif income <= phase_out_start:
-        return max_credit
-    else:
-        phase_out = max_credit - (income - phase_out_start) * phase_out_rate
-        return max(0, phase_out)
-
-def calculate_ctc(num_children):
-    # Simplified CTC - $2000 per child
-    return num_children * 2000
-
-def calculate_wic(income, household_size, num_young_children):
-    fpg = get_fpg(household_size)
-    if income > fpg * 1.85:
-        return 0
-    # Estimated WIC benefit
-    return num_young_children * 600  # ~$50/month per eligible child
-
-def calculate_ptc(income, household_size):
-    fpg = get_fpg(household_size)
-
-    if income < fpg:
-        return 0  # Medicaid eligible
-    if income > fpg * 4:
-        return 0  # Above 400% FPG
-
-    # Simplified premium calculation
-    benchmark_premium = 5000  # Simplified benchmark
-
-    # Calculate expected contribution based on FPG %
-    fpg_percent = income / fpg
-    if fpg_percent <= 1.5:
-        contribution_rate = 0.02
-    elif fpg_percent <= 2.0:
-        contribution_rate = 0.04
-    elif fpg_percent <= 2.5:
-        contribution_rate = 0.06
-    elif fpg_percent <= 3.0:
-        contribution_rate = 0.08
-    else:
-        contribution_rate = 0.085
-
-    expected_contribution = income * contribution_rate
-    return max(0, benchmark_premium - expected_contribution)
-
-def calculate_marginal_child_benefits(marital_status, state, spouse_income):
-    """Calculate marginal benefits for children 1-4 across income range"""
+def calculate_marginal_child_benefits(marital_status, state_code, spouse_income):
+    """Calculate marginal benefits for children 1-4 across income range using PolicyEngine-US"""
 
     max_children = 4
     income_min = 0
@@ -140,30 +29,79 @@ def calculate_marginal_child_benefits(marital_status, state, spouse_income):
 
     results = []
 
-    for test_income in range(income_min, income_max + 1, income_step):
+    # Progress bar for calculation
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+
+    income_points = list(range(income_min, income_max + 1, income_step))
+    total_calculations = len(income_points) * (max_children + 1)
+    calculation_count = 0
+
+    for test_income in income_points:
         prev_net_income = None
 
         for num_kids in range(max_children + 1):
-            total_income = test_income + spouse_income
+            # Update progress
+            calculation_count += 1
+            progress = calculation_count / total_calculations
+            progress_bar.progress(progress)
+            status_text.text(f'Calculating: ${test_income:,} with {num_kids} children...')
 
-            household_size = 1
+            # Create the situation with PolicyEngine
+            situation = {
+                "people": {
+                    "adult": {
+                        "age": 30,
+                        "employment_income": {2024: test_income}
+                    }
+                }
+            }
+
+            # Add spouse if married
             if marital_status == 'married':
-                household_size += 1
-            household_size += num_kids
+                situation["people"]["spouse"] = {
+                    "age": 30,
+                    "employment_income": {2024: spouse_income}
+                }
 
-            # Calculate all benefits
-            snap = calculate_snap(total_income, household_size)
-            wic = calculate_wic(total_income, household_size, min(num_kids, 2))
-            medicaid = calculate_medicaid_value(total_income, household_size, num_kids)
-            chip = 0
-            ptc = calculate_ptc(total_income, household_size) if medicaid == 0 else 0
-            eitc = calculate_eitc(total_income, num_kids, marital_status == 'married')
-            ctc = calculate_ctc(num_kids)
-            cdcc = min(num_kids * 1000, 3000) if num_kids > 0 else 0
+            # Add children (all age 10)
+            for i in range(num_kids):
+                situation["people"][f"child_{i+1}"] = {
+                    "age": 10
+                }
 
-            total_benefits = snap + wic + medicaid + chip + ptc + eitc + ctc + cdcc
-            net_income = total_income + total_benefits
+            # Create family and household structure
+            members = ["adult"]
+            if marital_status == 'married':
+                members.append("spouse")
+            members.extend([f"child_{i+1}" for i in range(num_kids)])
 
+            situation["families"] = {
+                "family": {"members": members}
+            }
+
+            situation["households"] = {
+                "household": {
+                    "members": members,
+                    "state_code": {2024: state_code}
+                }
+            }
+
+            situation["tax_units"] = {
+                "tax_unit": {"members": members}
+            }
+
+            situation["spm_units"] = {
+                "spm_unit": {"members": members}
+            }
+
+            # Run simulation
+            sim = Simulation(situation=situation)
+
+            # Get net income (household income after taxes and transfers)
+            net_income = float(sim.calculate("household_net_income", 2024)[0])
+
+            # Calculate marginal benefit
             if prev_net_income is not None and num_kids > 0:
                 marginal_benefit = net_income - prev_net_income
 
@@ -175,6 +113,10 @@ def calculate_marginal_child_benefits(marital_status, state, spouse_income):
                 })
 
             prev_net_income = net_income
+
+    # Clear progress indicators
+    progress_bar.empty()
+    status_text.empty()
 
     return pd.DataFrame(results)
 
@@ -215,22 +157,33 @@ def main():
         marital_status = st.selectbox(
             "Marital Status",
             options=['single', 'married'],
-            format_func=lambda x: x.title()
+            format_func=lambda x: x.title(),
+            key='marital_status'
         )
 
         # List of US states
         states = [
-            "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL",
-            "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME",
-            "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH",
-            "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI",
-            "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"
+            ("AL", "Alabama"), ("AK", "Alaska"), ("AZ", "Arizona"), ("AR", "Arkansas"),
+            ("CA", "California"), ("CO", "Colorado"), ("CT", "Connecticut"), ("DE", "Delaware"),
+            ("DC", "District of Columbia"), ("FL", "Florida"), ("GA", "Georgia"), ("HI", "Hawaii"),
+            ("ID", "Idaho"), ("IL", "Illinois"), ("IN", "Indiana"), ("IA", "Iowa"),
+            ("KS", "Kansas"), ("KY", "Kentucky"), ("LA", "Louisiana"), ("ME", "Maine"),
+            ("MD", "Maryland"), ("MA", "Massachusetts"), ("MI", "Michigan"), ("MN", "Minnesota"),
+            ("MS", "Mississippi"), ("MO", "Missouri"), ("MT", "Montana"), ("NE", "Nebraska"),
+            ("NV", "Nevada"), ("NH", "New Hampshire"), ("NJ", "New Jersey"), ("NM", "New Mexico"),
+            ("NY", "New York"), ("NC", "North Carolina"), ("ND", "North Dakota"), ("OH", "Ohio"),
+            ("OK", "Oklahoma"), ("OR", "Oregon"), ("PA", "Pennsylvania"), ("RI", "Rhode Island"),
+            ("SC", "South Carolina"), ("SD", "South Dakota"), ("TN", "Tennessee"), ("TX", "Texas"),
+            ("UT", "Utah"), ("VT", "Vermont"), ("VA", "Virginia"), ("WA", "Washington"),
+            ("WV", "West Virginia"), ("WI", "Wisconsin"), ("WY", "Wyoming")
         ]
 
-        state = st.selectbox(
+        state_code = st.selectbox(
             "State",
-            options=states,
-            index=states.index("TX")
+            options=[code for code, _ in states],
+            format_func=lambda x: next(name for code, name in states if code == x),
+            index=43,  # Default to Texas
+            key='state'
         )
 
         spouse_income = 0
@@ -240,15 +193,26 @@ def main():
                 min_value=0,
                 max_value=500000,
                 value=0,
-                step=1000
+                step=1000,
+                key='spouse_income'
             )
 
         st.markdown("---")
         st.markdown("**Note:** All children are assumed to be age 10 for benefit calculations.")
 
-    # Calculate results
-    with st.spinner('Calculating marginal child benefits...'):
-        df = calculate_marginal_child_benefits(marital_status, state, spouse_income)
+        calculate_button = st.button(
+            "Calculate Marginal Benefits",
+            type="primary",
+            use_container_width=True
+        )
+
+    # Main content
+    if calculate_button or 'df' not in st.session_state:
+        with st.spinner('Calculating marginal child benefits using PolicyEngine-US...'):
+            df = calculate_marginal_child_benefits(marital_status, state_code, spouse_income)
+            st.session_state.df = df
+    else:
+        df = st.session_state.df
 
     # Create the plot
     fig = go.Figure()
