@@ -98,6 +98,7 @@ const theme = createTheme({
 function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [initialized, setInitialized] = useState(false);
 
   const [params, setParams] = useState({
     marital_status: 'single',
@@ -112,12 +113,26 @@ function App() {
   const [states, setStates] = useState([]);
 
   useEffect(() => {
-    fetchStates();
-    // Auto-calculate marginal child on load
-    setTimeout(() => {
-      calculateMarginalChild();
-    }, 500);
-  }, []);
+    const init = async () => {
+      try {
+        // Fetch states first
+        const response = await axios.get(`${API_URL}/states`);
+        setStates(response.data);
+
+        // Then calculate marginal child
+        const calcResponse = await axios.post(`${API_URL}/marginal_child`, params);
+        setMarginalChildData(calcResponse.data);
+        setInitialized(true);
+      } catch (err) {
+        console.error('Initialization error:', err);
+        setError('Failed to initialize. Please refresh the page.');
+      }
+    };
+
+    if (!initialized) {
+      init();
+    }
+  }, [initialized]);
 
   const fetchStates = async () => {
     try {
@@ -130,15 +145,30 @@ function App() {
 
 
   const calculateMarginalChild = async (overrideParams = null) => {
+    // Prevent duplicate calls
+    if (loading) return;
+
     setLoading(true);
     setError(null);
     try {
       const paramsToUse = overrideParams || params;
+      console.log('Calling API with params:', paramsToUse);
+
       const response = await axios.post(`${API_URL}/marginal_child`, paramsToUse);
-      setMarginalChildData(response.data);
+      console.log('API response:', response.data.length, 'items');
+
+      if (response.data && response.data.length > 0) {
+        setMarginalChildData(response.data);
+        setError(null);
+      } else {
+        throw new Error('No data returned from API');
+      }
     } catch (err) {
-      setError('Failed to calculate marginal child benefits. Make sure the API is running.');
-      console.error(err);
+      console.error('API Error details:', err.response || err);
+      const errorMessage = err.response?.data?.error ||
+                          err.message ||
+                          'Failed to calculate marginal child benefits. Make sure the API is running.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
