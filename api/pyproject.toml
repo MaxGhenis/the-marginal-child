@@ -1,0 +1,18 @@
+[project]
+name = "the-marginal-child-api"
+version = "0.1.0"
+description = "API for The Marginal Child benefit calculator"
+requires-python = ">=3.10"
+dependencies = [
+    "flask>=3.0.0",
+    "flask-cors>=4.0.0",
+    "policyengine-us>=1.0.0",
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+]
