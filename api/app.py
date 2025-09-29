@@ -1,8 +1,24 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from policyengine_us import Simulation
 import pandas as pd
 import numpy as np
+
+# Import PolicyEngine after other imports to avoid circular dependencies
+import sys
+import warnings
+warnings.filterwarnings('ignore')
+
+try:
+    from policyengine_us import Simulation
+except ImportError as e:
+    print(f"Warning: Could not import policyengine_us directly: {e}")
+    # Try alternative import
+    from policyengine_us.system import system
+    from policyengine_core.simulations import Simulation as CoreSimulation
+
+    class Simulation(CoreSimulation):
+        def __init__(self, *args, **kwargs):
+            super().__init__(tax_benefit_system=system, *args, **kwargs)
 
 app = Flask(__name__)
 CORS(app)
