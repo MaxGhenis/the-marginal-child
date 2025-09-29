@@ -109,19 +109,19 @@ def calculate_marginal_child_benefits(marital_status, state_code, spouse_income)
         # Store results
         all_net_incomes[num_kids] = net_incomes
 
-    # Calculate marginal benefits
-    baseline_net_incomes = all_net_incomes[0]
-
+    # Calculate marginal benefits (difference between N and N-1 children)
     for num_kids in range(1, max_children + 1):
-        net_incomes = all_net_incomes[num_kids]
+        current_net_incomes = all_net_incomes[num_kids]
+        previous_net_incomes = all_net_incomes[num_kids - 1]  # Compare with N-1 children
+
         for i, income in enumerate(income_points):
-            marginal_benefit = float(net_incomes[i] - baseline_net_incomes[i])
+            marginal_benefit = float(current_net_incomes[i] - previous_net_incomes[i])
 
             results.append({
                 'income': income,
                 'num_children': num_kids,
                 'marginal_benefit': marginal_benefit,
-                'net_income': float(net_incomes[i])
+                'net_income': float(current_net_incomes[i])
             })
 
     # Clear progress indicators
@@ -234,7 +234,7 @@ def main():
             x=child_data['income'],
             y=child_data['marginal_benefit'],
             mode='lines',
-            name=f'Child {child_num}',
+            name=f'{child_num}{"st" if child_num == 1 else "nd" if child_num == 2 else "rd" if child_num == 3 else "th"} child',
             line=dict(
                 color=COLORS['gradient'][i % len(COLORS['gradient'])],
                 width=3
