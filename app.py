@@ -35,6 +35,9 @@ def calculate_marginal_child_benefits(marital_status, state_code, spouse_income)
 
     income_points = list(range(income_min, income_max + 1, income_step))
 
+    # Store net incomes for each number of children
+    all_net_incomes = {}
+
     # Calculate for each number of children using axes for income
     for num_kids in range(max_children + 1):
         # Update progress
@@ -42,15 +45,11 @@ def calculate_marginal_child_benefits(marital_status, state_code, spouse_income)
         progress_bar.progress(progress)
         status_text.text(f'Calculating with {num_kids} children across all income levels...')
 
-        # Create the situation with PolicyEngine using axes
+        # Create base situation
         situation = {
-            "axes": [[
-                {"people": {"adult": {"employment_income": {2024: income}}}}
-                for income in income_points
-            ]],
             "people": {
                 "adult": {
-                    "age": 30,
+                    "age": {2024: 30},
                 }
             }
         }
@@ -58,14 +57,14 @@ def calculate_marginal_child_benefits(marital_status, state_code, spouse_income)
         # Add spouse if married
         if marital_status == 'married':
             situation["people"]["spouse"] = {
-                "age": 30,
+                "age": {2024: 30},
                 "employment_income": {2024: spouse_income}
             }
 
         # Add children (all age 10)
         for i in range(num_kids):
             situation["people"][f"child_{i+1}"] = {
-                "age": 10
+                "age": {2024: 10}
             }
 
         # Create family and household structure
@@ -93,27 +92,37 @@ def calculate_marginal_child_benefits(marital_status, state_code, spouse_income)
             "spm_unit": {"members": members}
         }
 
+        # Add axes for employment income variation
+        situation["axes"] = [[{
+            "name": "employment_income",
+            "count": len(income_points),
+            "min": income_min,
+            "max": income_max
+        }]]
+
         # Run simulation with axes
         sim = Simulation(situation=situation)
 
         # Get net income for all income points at once
         net_incomes = sim.calculate("household_net_income", 2024)
 
-        # Store results for this number of children
-        if num_kids == 0:
-            # Store baseline (0 children) for comparison
-            baseline_net_incomes = net_incomes
-        else:
-            # Calculate marginal benefits
-            for i, income in enumerate(income_points):
-                marginal_benefit = float(net_incomes[i] - baseline_net_incomes[i])
+        # Store results
+        all_net_incomes[num_kids] = net_incomes
 
-                results.append({
-                    'income': income,
-                    'num_children': num_kids,
-                    'marginal_benefit': marginal_benefit,
-                    'net_income': float(net_incomes[i])
-                })
+    # Calculate marginal benefits
+    baseline_net_incomes = all_net_incomes[0]
+
+    for num_kids in range(1, max_children + 1):
+        net_incomes = all_net_incomes[num_kids]
+        for i, income in enumerate(income_points):
+            marginal_benefit = float(net_incomes[i] - baseline_net_incomes[i])
+
+            results.append({
+                'income': income,
+                'num_children': num_kids,
+                'marginal_benefit': marginal_benefit,
+                'net_income': float(net_incomes[i])
+            })
 
     # Clear progress indicators
     progress_bar.empty()
