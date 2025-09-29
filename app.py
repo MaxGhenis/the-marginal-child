@@ -19,7 +19,7 @@ COLORS = {
     'gradient': ['#D1E5F0', '#92C5DE', '#2166AC', '#053061'],
 }
 
-def calculate_marginal_child_benefits(marital_status, state_code, spouse_income):
+def calculate_marginal_child_benefits(marital_status, state_code, spouse_income, include_health_benefits):
     """Calculate marginal benefits for children 1-4 across income range using PolicyEngine-US with axes"""
 
     max_children = 4
@@ -103,8 +103,13 @@ def calculate_marginal_child_benefits(marital_status, state_code, spouse_income)
         # Run simulation with axes
         sim = Simulation(situation=situation)
 
-        # Get net income for all income points at once
-        net_incomes = sim.calculate("household_net_income", 2024)
+        # Get net income - either with or without health benefits value based on checkbox
+        if include_health_benefits:
+            # Use the comprehensive measure that includes health insurance value
+            net_incomes = sim.calculate("household_net_income_including_health_benefits", 2024)
+        else:
+            # Use regular net income (cash benefits only)
+            net_incomes = sim.calculate("household_net_income", 2024)
 
         # Store results
         all_net_incomes[num_kids] = net_incomes
@@ -208,6 +213,14 @@ def main():
             )
 
         st.markdown("---")
+
+        # Add checkbox for including health benefits
+        include_health_benefits = st.checkbox(
+            "Include health insurance value (Medicaid, CHIP, ACA subsidies)",
+            value=True,
+            help="When checked, includes the monetary value of health insurance benefits in the net income calculation"
+        )
+
         st.markdown("**Note:** All children are assumed to be age 10 for benefit calculations.")
 
         calculate_button = st.button(
@@ -219,7 +232,7 @@ def main():
     # Main content
     if calculate_button or 'df' not in st.session_state:
         with st.spinner('Calculating marginal child benefits using PolicyEngine-US...'):
-            df = calculate_marginal_child_benefits(marital_status, state_code, spouse_income)
+            df = calculate_marginal_child_benefits(marital_status, state_code, spouse_income, include_health_benefits)
             st.session_state.df = df
     else:
         df = st.session_state.df
