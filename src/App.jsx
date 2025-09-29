@@ -28,7 +28,7 @@ import Header from './components/Header';
 import { colors } from './styles/colors';
 import './App.css';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'http://localhost:5001/api';
 
 // Create PolicyEngine theme
 const theme = createTheme({
@@ -129,11 +129,12 @@ function App() {
   };
 
 
-  const calculateMarginalChild = async () => {
+  const calculateMarginalChild = async (overrideParams = null) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.post(`${API_URL}/marginal_child`, params);
+      const paramsToUse = overrideParams || params;
+      const response = await axios.post(`${API_URL}/marginal_child`, paramsToUse);
       setMarginalChildData(response.data);
     } catch (err) {
       setError('Failed to calculate marginal child benefits. Make sure the API is running.');
@@ -144,7 +145,15 @@ function App() {
   };
 
   const handleParamChange = (key, value) => {
-    setParams(prev => ({ ...prev, [key]: value }));
+    const newParams = { ...params, [key]: value };
+    setParams(newParams);
+
+    // Auto-recalculate when state or marital status changes
+    if (key === 'state' || key === 'marital_status') {
+      setTimeout(() => {
+        calculateMarginalChild(newParams);
+      }, 100);
+    }
   };
 
 
@@ -191,7 +200,8 @@ function App() {
       yaxis: {
         title: 'Net Income Change for Additional Child',
         tickformat: '$,.0f',
-        font: { family: 'Roboto, sans-serif' }
+        font: { family: 'Roboto, sans-serif' },
+        rangemode: 'tozero'  // Force Y-axis to start at 0
       },
       hovermode: 'x unified',
       paper_bgcolor: colors.background.paper,
