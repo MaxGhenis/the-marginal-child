@@ -20,7 +20,7 @@ COLORS = {
 }
 
 def calculate_marginal_child_benefits(marital_status, state_code, spouse_income):
-    """Calculate marginal benefits for children 1-4 across income range using PolicyEngine-US"""
+    """Calculate marginal benefits for children 1-4 across income range using PolicyEngine-US with axes"""
 
     max_children = 4
     income_min = 0
@@ -34,85 +34,86 @@ def calculate_marginal_child_benefits(marital_status, state_code, spouse_income)
     status_text = st.empty()
 
     income_points = list(range(income_min, income_max + 1, income_step))
-    total_calculations = len(income_points) * (max_children + 1)
-    calculation_count = 0
 
-    for test_income in income_points:
-        prev_net_income = None
+    # Calculate for each number of children using axes for income
+    for num_kids in range(max_children + 1):
+        # Update progress
+        progress = (num_kids + 1) / (max_children + 1)
+        progress_bar.progress(progress)
+        status_text.text(f'Calculating with {num_kids} children across all income levels...')
 
-        for num_kids in range(max_children + 1):
-            # Update progress
-            calculation_count += 1
-            progress = calculation_count / total_calculations
-            progress_bar.progress(progress)
-            status_text.text(f'Calculating: ${test_income:,} with {num_kids} children...')
-
-            # Create the situation with PolicyEngine
-            situation = {
-                "people": {
-                    "adult": {
-                        "age": 30,
-                        "employment_income": {2024: test_income}
-                    }
-                }
-            }
-
-            # Add spouse if married
-            if marital_status == 'married':
-                situation["people"]["spouse"] = {
+        # Create the situation with PolicyEngine using axes
+        situation = {
+            "axes": [[
+                {"people": {"adult": {"employment_income": {2024: income}}}}
+                for income in income_points
+            ]],
+            "people": {
+                "adult": {
                     "age": 30,
-                    "employment_income": {2024: spouse_income}
-                }
-
-            # Add children (all age 10)
-            for i in range(num_kids):
-                situation["people"][f"child_{i+1}"] = {
-                    "age": 10
-                }
-
-            # Create family and household structure
-            members = ["adult"]
-            if marital_status == 'married':
-                members.append("spouse")
-            members.extend([f"child_{i+1}" for i in range(num_kids)])
-
-            situation["families"] = {
-                "family": {"members": members}
-            }
-
-            situation["households"] = {
-                "household": {
-                    "members": members,
-                    "state_code": {2024: state_code}
                 }
             }
+        }
 
-            situation["tax_units"] = {
-                "tax_unit": {"members": members}
+        # Add spouse if married
+        if marital_status == 'married':
+            situation["people"]["spouse"] = {
+                "age": 30,
+                "employment_income": {2024: spouse_income}
             }
 
-            situation["spm_units"] = {
-                "spm_unit": {"members": members}
+        # Add children (all age 10)
+        for i in range(num_kids):
+            situation["people"][f"child_{i+1}"] = {
+                "age": 10
             }
 
-            # Run simulation
-            sim = Simulation(situation=situation)
+        # Create family and household structure
+        members = ["adult"]
+        if marital_status == 'married':
+            members.append("spouse")
+        members.extend([f"child_{i+1}" for i in range(num_kids)])
 
-            # Get net income (household income after taxes and transfers)
-            net_income = float(sim.calculate("household_net_income", 2024)[0])
+        situation["families"] = {
+            "family": {"members": members}
+        }
 
-            # Calculate marginal benefit
-            if prev_net_income is not None and num_kids > 0:
-                marginal_benefit = net_income - prev_net_income
+        situation["households"] = {
+            "household": {
+                "members": members,
+                "state_code": {2024: state_code}
+            }
+        }
+
+        situation["tax_units"] = {
+            "tax_unit": {"members": members}
+        }
+
+        situation["spm_units"] = {
+            "spm_unit": {"members": members}
+        }
+
+        # Run simulation with axes
+        sim = Simulation(situation=situation)
+
+        # Get net income for all income points at once
+        net_incomes = sim.calculate("household_net_income", 2024)
+
+        # Store results for this number of children
+        if num_kids == 0:
+            # Store baseline (0 children) for comparison
+            baseline_net_incomes = net_incomes
+        else:
+            # Calculate marginal benefits
+            for i, income in enumerate(income_points):
+                marginal_benefit = float(net_incomes[i] - baseline_net_incomes[i])
 
                 results.append({
-                    'income': test_income,
+                    'income': income,
                     'num_children': num_kids,
                     'marginal_benefit': marginal_benefit,
-                    'net_income': net_income
+                    'net_income': float(net_incomes[i])
                 })
-
-            prev_net_income = net_income
 
     # Clear progress indicators
     progress_bar.empty()
