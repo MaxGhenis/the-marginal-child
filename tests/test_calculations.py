@@ -8,11 +8,10 @@ import pytest
 
 def test_calculate_marginal_child_benefits():
     """Test the marginal child benefit calculation."""
-    # Import here to avoid issues if module structure changes
-    from app import calculate_marginal_child_benefits
+    from calculations import calculate_marginal_child_benefits
 
     # Mock the Simulation class to avoid actual PolicyEngine API calls
-    with patch("app.Simulation") as MockSimulation:
+    with patch("calculations.Simulation") as MockSimulation:
         # Setup mock simulation
         mock_sim = MagicMock()
         MockSimulation.return_value = mock_sim
@@ -47,10 +46,10 @@ def test_calculate_marginal_child_benefits():
 
 def test_state_code_validation():
     """Test that all US state codes are valid options."""
-    from app import calculate_marginal_child_benefits
+    from calculations import calculate_marginal_child_benefits
 
     # Test with a valid state code
-    with patch("app.Simulation") as MockSimulation:
+    with patch("calculations.Simulation") as MockSimulation:
         mock_sim = MagicMock()
         MockSimulation.return_value = mock_sim
         mock_sim.calc.return_value = [0]
@@ -70,9 +69,9 @@ def test_state_code_validation():
 
 def test_married_household_configuration():
     """Test that married households include spouse correctly."""
-    from app import calculate_marginal_child_benefits
+    from calculations import calculate_marginal_child_benefits
 
-    with patch("app.Simulation") as MockSimulation:
+    with patch("calculations.Simulation") as MockSimulation:
         # Capture the situation passed to Simulation
         situations_created = []
 
@@ -106,9 +105,9 @@ def test_married_household_configuration():
 
 def test_health_benefits_inclusion():
     """Test that health benefits are calculated when requested."""
-    from app import calculate_marginal_child_benefits
+    from calculations import calculate_marginal_child_benefits
 
-    with patch("app.Simulation") as MockSimulation:
+    with patch("calculations.Simulation") as MockSimulation:
         mock_sim = MagicMock()
         MockSimulation.return_value = mock_sim
 
