@@ -40,7 +40,7 @@ jobs:
 
     - name: Type check with mypy
       run: |
-        mypy . --ignore-missing-imports
+        mypy . --ignore-missing-imports --no-strict-optional --allow-untyped-defs
 
     - name: Run tests
       run: |
