@@ -34,12 +34,14 @@ def render_header():
     with col1:
         st.title("The Marginal Child")
         st.markdown(
-            '<p class="subtitle">Analyze how government benefits change with each additional child</p>',
+            '<p class="subtitle">Analyze how government benefits '
+            "change with each additional child</p>",
             unsafe_allow_html=True,
         )
     with col2:
         st.markdown(
-            '<div style="text-align: right; padding-top: 1rem;">Powered by PolicyEngine</div>',
+            '<div style="text-align: right; padding-top: 1rem;">'
+            "Powered by PolicyEngine</div>",
             unsafe_allow_html=True,
         )
 
@@ -48,7 +50,8 @@ def render_sidebar() -> tuple:
     """Render the sidebar configuration panel.
 
     Returns:
-        Tuple of (marital_status, state_code, spouse_income, include_health_benefits, calculate_button)
+        Tuple of (marital_status, state_code, spouse_income,
+                  include_health_benefits, calculate_button)
     """
     with st.sidebar:
         st.header("Household Configuration")
@@ -85,13 +88,16 @@ def render_sidebar() -> tuple:
         st.markdown("---")
 
         include_health_benefits = st.checkbox(
-            "Include health insurance value (Medicaid, CHIP, ACA subsidies)",
+            "Include health insurance value "
+            "(Medicaid, CHIP, ACA subsidies)",
             value=True,
-            help="When checked, includes the monetary value of health insurance benefits in the net income calculation",
+            help="When checked, includes the monetary value of health "
+            "insurance benefits in the net income calculation",
         )
 
         st.markdown(
-            "**Note:** All children are assumed to be age 10 for benefit calculations."
+            "**Note:** All children are assumed to be age 10 "
+            "for benefit calculations."
         )
 
         calculate_button = st.button(
@@ -133,14 +139,16 @@ def create_benefits_plot(df: pd.DataFrame) -> go.Figure:
                     color=COLORS["gradient"][i % len(COLORS["gradient"])],
                     width=3,
                 ),
-                hovertemplate="Income: $%{x:,.0f}<br>Marginal Benefit: $%{y:,.0f}<extra></extra>",
+                hovertemplate="Income: $%{x:,.0f}<br>"
+                "Marginal Benefit: $%{y:,.0f}<extra></extra>",
             )
         )
 
     # Update layout
     fig.update_layout(
         title={
-            "text": "Net Income Change from Taxes and Benefits per Additional Child",
+            "text": "Net Income Change from Taxes and Benefits "
+            "per Additional Child",
             "font": {"size": 20, "color": COLORS["primary"]},
         },
         xaxis=dict(

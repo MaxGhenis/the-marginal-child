@@ -1,7 +1,7 @@
 """Calculation logic for the Marginal Child application."""
 
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Dict
 
 import pandas as pd
 import streamlit as st
@@ -56,7 +56,8 @@ def validate_inputs(
 
     if not isinstance(include_health_benefits, bool):
         raise ValueError(
-            f"include_health_benefits must be boolean: {include_health_benefits}"
+            "include_health_benefits must be boolean: "
+            f"{include_health_benefits}"
         )
 
 
@@ -138,8 +139,9 @@ def calculate_marginal_child_benefits(
 ) -> pd.DataFrame:
     """Calculate marginal benefits for children 1-4 across income range.
 
-    This function uses PolicyEngine-US with axes to efficiently calculate
-    net income across multiple income levels for households with 0-4 children.
+    This function uses PolicyEngine-US with axes to efficiently
+    calculate net income across multiple income levels for
+    households with 0-4 children.
 
     Args:
         marital_status: Either 'single' or 'married'
@@ -148,7 +150,8 @@ def calculate_marginal_child_benefits(
         include_health_benefits: Whether to include health insurance value
 
     Returns:
-        DataFrame with columns: income, num_children, marginal_benefit, net_income
+        DataFrame with columns: income, num_children,
+        marginal_benefit, net_income
 
     Raises:
         ValueError: If inputs are invalid

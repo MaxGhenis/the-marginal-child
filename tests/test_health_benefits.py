@@ -1,6 +1,5 @@
 """Test health benefits calculation with axes."""
 
-import pytest
 from policyengine_us import Simulation
 
 

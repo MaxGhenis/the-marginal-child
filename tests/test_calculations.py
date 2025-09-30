@@ -128,7 +128,7 @@ def test_health_benefits_inclusion():
         mock_sim.calculate = mock_calculate
 
         # Test with health benefits
-        result_with_health = calculate_marginal_child_benefits(
+        calculate_marginal_child_benefits(
             marital_status="single",
             state_code="TX",
             spouse_income=0,
