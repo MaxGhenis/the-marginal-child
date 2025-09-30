@@ -81,7 +81,9 @@ def create_household_situation(
         ValueError: If num_children is negative or exceeds MAX_CHILDREN
     """
     if num_children < 0:
-        raise ValueError(f"Number of children cannot be negative: {num_children}")
+        raise ValueError(
+            f"Number of children cannot be negative: {num_children}"
+        )
 
     if num_children > MAX_CHILDREN:
         raise ValueError(

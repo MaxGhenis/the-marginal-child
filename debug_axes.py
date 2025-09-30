@@ -1,10 +1,12 @@
 """Debug script to test axes behavior - runs through Streamlit's env."""
 
 import sys
-sys.path.insert(0, '/Users/maxghenis/PolicyEngine/marginal-child')
+
+sys.path.insert(0, "/Users/maxghenis/PolicyEngine/marginal-child")
+
+from policyengine_us import Simulation
 
 from calculations import create_household_situation
-from policyengine_us import Simulation
 
 
 def test_axes_employment_income():
@@ -15,16 +17,20 @@ def test_axes_employment_income():
         num_children=2,
         marital_status="single",
         state_code="CA",
-        spouse_income=0
+        spouse_income=0,
     )
 
     # Add axes
-    situation["axes"] = [[{
-        "name": "employment_income",
-        "count": 3,
-        "min": 0,
-        "max": 100000,
-    }]]
+    situation["axes"] = [
+        [
+            {
+                "name": "employment_income",
+                "count": 3,
+                "min": 0,
+                "max": 100000,
+            }
+        ]
+    ]
 
     print("Situation before simulation:")
     print("=" * 60)

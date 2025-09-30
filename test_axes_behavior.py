@@ -24,23 +24,31 @@ def test_axes_with_explicit_zero():
             "child_2": {
                 "age": {2024: 10},
                 # No employment_income set - will axes apply?
-            }
+            },
         },
         "families": {"family": {"members": ["adult", "child_1", "child_2"]}},
         "households": {
             "household": {
                 "members": ["adult", "child_1", "child_2"],
-                "state_code": {2024: "CA"}
+                "state_code": {2024: "CA"},
             }
         },
-        "tax_units": {"tax_unit": {"members": ["adult", "child_1", "child_2"]}},
-        "spm_units": {"spm_unit": {"members": ["adult", "child_1", "child_2"]}},
-        "axes": [[{
-            "name": "employment_income",
-            "count": 3,
-            "min": 0,
-            "max": 100000,
-        }]]
+        "tax_units": {
+            "tax_unit": {"members": ["adult", "child_1", "child_2"]}
+        },
+        "spm_units": {
+            "spm_unit": {"members": ["adult", "child_1", "child_2"]}
+        },
+        "axes": [
+            [
+                {
+                    "name": "employment_income",
+                    "count": 3,
+                    "min": 0,
+                    "max": 100000,
+                }
+            ]
+        ],
     }
 
     sim = Simulation(situation=situation)
@@ -79,12 +87,16 @@ def test_axes_with_explicit_zero():
     if all(v == 0 for v in child1_values):
         print("✓ Child 1 stays at 0 (explicit value prevents axes)")
     else:
-        print(f"✗ Child 1 varies: {child1_values} (explicit 0 does NOT prevent axes!)")
+        print(
+            f"✗ Child 1 varies: {child1_values} (explicit 0 does NOT prevent axes!)"
+        )
 
     # Child 2 (not set) - this will reveal the default behavior
     child2_values = adult_income[6:9]
     if len(set(child2_values)) > 1:
-        print(f"✗ Child 2 varies: {child2_values} (axes applied when not set!)")
+        print(
+            f"✗ Child 2 varies: {child2_values} (axes applied when not set!)"
+        )
     else:
         print(f"✓ Child 2 stays at {child2_values[0]} (axes not applied)")
 
