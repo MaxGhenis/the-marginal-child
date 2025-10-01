@@ -52,3 +52,26 @@ ENV/
 api/.venv/
 api/__pycache__/
 api/*.pyc
+
+# UV package manager
+uv.lock
+
+# Environment variables
+.env
+.env.local
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# Testing
+.pytest_cache/
+.tox/
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json

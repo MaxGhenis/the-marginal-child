@@ -1,42 +1,56 @@
-.PHONY: install test test-api test-frontend test-integration run-api run-frontend run dev clean
+.PHONY: install install-dev run test format lint clean docker-build docker-run docker-stop
 
 # Install dependencies
 install:
-	cd api && uv venv && uv pip install -r requirements.txt
-	npm install
+	pip install -e .
 
-# Run all tests
-test: test-api test-frontend
+# Install with development dependencies
+install-dev:
+	pip install -e ".[dev]"
+	pre-commit install
 
-# Test API
-test-api:
-	cd api && uv run pytest test_app.py -v
+# Run Streamlit app
+run:
+	streamlit run app.py
 
-# Test frontend
-test-frontend:
-	npm test -- --watchAll=false
+# Run tests
+test:
+	pytest tests/ -v --cov=. --cov-report=term-missing
 
-# Integration tests (requires API to be running)
-test-integration:
-	cd api && uv run pytest test_integration.py -v
+# Format code
+format:
+	black . --line-length 79
+	isort . --profile black --line-length 79
 
-# Run API server
-run-api:
-	cd api && uv run python app_mock.py
-
-# Run frontend dev server
-run-frontend:
-	npm run dev
-
-# Run both servers
-dev:
-	@echo "Starting API server on http://localhost:5001..."
-	@cd api && uv run python app_mock.py &
-	@echo "Starting frontend on http://localhost:5173..."
-	@npm run dev
+# Lint code
+lint:
+	black --check --line-length 79 .
+	isort --check-only --profile black --line-length 79 .
+	flake8 . --max-line-length=79 --extend-ignore=E203,W503
+	mypy . --ignore-missing-imports
 
 # Clean up
 clean:
-	rm -rf api/__pycache__ api/.pytest_cache
-	rm -rf node_modules
-	rm -rf dist
+	rm -rf __pycache__ .streamlit/ .pytest_cache/ .coverage htmlcov/ .mypy_cache/
+	find . -type f -name "*.pyc" -delete
+	find . -type d -name "__pycache__" -delete
+
+# Docker commands
+docker-build:
+	docker-compose build
+
+docker-run:
+	docker-compose up -d
+
+docker-stop:
+	docker-compose down
+
+docker-logs:
+	docker-compose logs -f
+
+# Development workflow
+dev: install-dev format lint test
+
+# Deployment
+deploy: format lint test
+	@echo "Ready for deployment!"

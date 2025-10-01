@@ -1,0 +1,1 @@
+"""Tests for the Marginal Child application."""
