@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 def validate_inputs(
+    year: int,
     marital_status: str,
     state_code: str,
     spouse_income: float,
@@ -31,6 +32,7 @@ def validate_inputs(
     """Validate input parameters.
 
     Args:
+        year: Tax year for calculations (2021-2035)
         marital_status: Either 'single' or 'married'
         state_code: Two-letter US state code
         spouse_income: Annual income of spouse
@@ -39,6 +41,8 @@ def validate_inputs(
     Raises:
         ValueError: If any input is invalid
     """
+    if year < 2021 or year > 2035:
+        raise ValueError(f"Year must be between 2021 and 2035: {year}")
     if marital_status not in ["single", "married"]:
         raise ValueError(f"Invalid marital status: {marital_status}")
 
@@ -63,6 +67,7 @@ def validate_inputs(
 
 def create_household_situation(
     num_children: int,
+    year: int,
     marital_status: str,
     state_code: str,
     spouse_income: float,
@@ -71,6 +76,7 @@ def create_household_situation(
 
     Args:
         num_children: Number of children in the household
+        year: Tax year for calculations
         marital_status: Either 'single' or 'married'
         state_code: Two-letter US state code
         spouse_income: Income of spouse (0 if single)
@@ -93,7 +99,7 @@ def create_household_situation(
     situation = {
         "people": {
             "adult": {
-                "age": {2024: DEFAULT_ADULT_AGE},
+                "age": {year: DEFAULT_ADULT_AGE},
             }
         }
     }
@@ -101,14 +107,14 @@ def create_household_situation(
     # Add spouse if married
     if marital_status == "married":
         situation["people"]["spouse"] = {
-            "age": {2024: DEFAULT_ADULT_AGE},
-            "employment_income": {2024: spouse_income},
+            "age": {year: DEFAULT_ADULT_AGE},
+            "employment_income": {year: spouse_income},
         }
 
     # Add children (all age 10)
     for i in range(num_children):
         situation["people"][f"child_{i+1}"] = {
-            "age": {2024: DEFAULT_CHILD_AGE}
+            "age": {year: DEFAULT_CHILD_AGE}
         }
 
     # Create family and household structure
@@ -120,7 +126,7 @@ def create_household_situation(
     situation["families"] = {"family": {"members": members}}
 
     situation["households"] = {
-        "household": {"members": members, "state_code": {2024: state_code}}
+        "household": {"members": members, "state_code": {year: state_code}}
     }
 
     situation["tax_units"] = {"tax_unit": {"members": members}}
@@ -132,6 +138,7 @@ def create_household_situation(
 
 @st.cache_data(show_spinner=False)
 def calculate_marginal_child_benefits(
+    year: int,
     marital_status: str,
     state_code: str,
     spouse_income: float,
@@ -144,6 +151,7 @@ def calculate_marginal_child_benefits(
     households with 0-4 children.
 
     Args:
+        year: Tax year for calculations (2021-2035)
         marital_status: Either 'single' or 'married'
         state_code: Two-letter US state code
         spouse_income: Annual income of spouse (0 if single)
@@ -160,7 +168,11 @@ def calculate_marginal_child_benefits(
     # Validate inputs
     try:
         validate_inputs(
-            marital_status, state_code, spouse_income, include_health_benefits
+            year,
+            marital_status,
+            state_code,
+            spouse_income,
+            include_health_benefits,
         )
     except ValueError as e:
         logger.error(f"Input validation failed: {e}")
@@ -187,7 +199,7 @@ def calculate_marginal_child_benefits(
 
         # Create base situation
         situation = create_household_situation(
-            num_kids, marital_status, state_code, spouse_income
+            num_kids, year, marital_status, state_code, spouse_income
         )
 
         # Add axes for employment income variation
@@ -217,11 +229,11 @@ def calculate_marginal_child_benefits(
                 # Calculate net income including health benefits value
                 # This includes Medicaid, CHIP, and ACA premium tax credits
                 net_incomes = sim.calculate(
-                    "household_net_income_including_health_benefits", 2024
+                    "household_net_income_including_health_benefits", year
                 )
             else:
                 # Use regular net income (cash benefits only)
-                net_incomes = sim.calculate("household_net_income", 2024)
+                net_incomes = sim.calculate("household_net_income", year)
 
         except Exception as e:
             logger.error(f"Failed to calculate net income: {e}")

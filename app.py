@@ -27,6 +27,7 @@ def main():
 
     # Get sidebar inputs
     (
+        year,
         marital_status,
         state_code,
         spouse_income,
@@ -41,6 +42,7 @@ def main():
                 "Calculating marginal child benefits using PolicyEngine-US..."
             ):
                 df = calculate_marginal_child_benefits(
+                    year,
                     marital_status,
                     state_code,
                     spouse_income,

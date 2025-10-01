@@ -50,11 +50,15 @@ def render_sidebar() -> tuple:
     """Render the sidebar configuration panel.
 
     Returns:
-        Tuple of (marital_status, state_code, spouse_income,
+        Tuple of (year, marital_status, state_code, spouse_income,
                   include_health_benefits, calculate_button)
     """
     with st.sidebar:
         st.header("Household Configuration")
+
+        year = st.selectbox(
+            "Year", options=list(range(2021, 2036)), index=4, key="year"
+        )
 
         marital_status = st.selectbox(
             "Marital Status",
@@ -107,6 +111,7 @@ def render_sidebar() -> tuple:
         )
 
     return (
+        year,
         marital_status,
         state_code,
         spouse_income,

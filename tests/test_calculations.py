@@ -22,6 +22,7 @@ def test_calculate_marginal_child_benefits():
 
         # Test single person household
         result = calculate_marginal_child_benefits(
+            year=2024,
             marital_status="single",
             state_code="TX",
             spouse_income=0,
@@ -58,6 +59,7 @@ def test_state_code_validation():
         # Should not raise an error with valid state
         try:
             calculate_marginal_child_benefits(
+                year=2024,
                 marital_status="single",
                 state_code="CA",
                 spouse_income=0,
@@ -86,6 +88,7 @@ def test_married_household_configuration():
 
         # Test married household
         calculate_marginal_child_benefits(
+            year=2024,
             marital_status="married",
             state_code="TX",
             spouse_income=30000,
@@ -128,6 +131,7 @@ def test_health_benefits_inclusion():
 
         # Test with health benefits
         calculate_marginal_child_benefits(
+            year=2024,
             marital_status="single",
             state_code="TX",
             spouse_income=0,
